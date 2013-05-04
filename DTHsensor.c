@@ -93,31 +93,49 @@
 
 /** VARIABLES ******************************************************/
 #pragma udata
+
 //button support variables
-BYTE old_sw;
-BOOL really_pressed;
-int pressed_count;
+BYTE default_sw;				//All'inizio del programma, memorizza il valore assunto dallo switch quando non è premuto (default)
+								//Tale valore (0 oppure 1?) può infatti dipende dalla particolare configurazione hardware!
+								//NOTA BENE: NON CAMBIA NEL CORSO DEL PROGRAMMA e NON VA MODIFICATA!
+BYTE old_sw;					//Questa variabile di utilità memorizza l'ultimo valore assunto dallo switch
+								//Viene usata per fare confronti nel programma.
+								//NOTA BENE: VARIA OGNI QUAL VOLTA action_sw VARIA (deve essere gestita)
+int pressed_time;
+
 //led support variables
+long int blink_time;
 
 //measure support variables
-measure_struct measure;
+measure_struct measure;			//Vedi la dichiarazione del tipo in usb_config.h
 
+//USB support variables
 USB_HANDLE lastTransmission;
 BOOL Keyboard_out;
 
 /** PRIVATE PROTOTYPES *********************************************/
+
+//Main Call Chain
+//void main(void)
+	static void InitializeSystem(void);
+		void UserInit(void);
+		//usbdeviceinit()
+	//usbdevicetasks()
+	void ProcessIO(void);
+		void GetMeasure(void);
+			//WORD GetDust(void)
+			//WORD GetTemp(void)
+			//WORD GetHumid(void)
+		void TransmitMeasure(void);
+	void LedMyState(void);
+
+//Utility functions
 BOOL SwitchIsPressed(void);
 
-static void InitializeSystem(void);
-void UserInit(void);
-
-void ProcessIO(void);
-
+//Interrupt handlers
 void YourHighPriorityISRCode();
 void YourLowPriorityISRCode();
 
-void Keyboard(void);
-void TransmitMeasure(void);
 
 
 /** VECTOR REMAPPING ***********************************************/
@@ -275,7 +293,11 @@ void main(void)
 
 		// Application-specific tasks.
 		// Application related code may be added here, or in the ProcessIO() function.
-        ProcessIO();        
+        ProcessIO();
+
+		// Blinking Led - Express device state through led blinking in different ways
+		LedMyState();
+
     }//end while
 }//end main
 
@@ -373,13 +395,21 @@ void UserInit(void)
     
     //Initialize all of the push buttons
     mInitSwitch();
-    old_sw = 0;								//why? old_sw = action_sw;
+											//PER SPIEGAZIONE, VEDERE LA DICHIARAZIONE DELLE VARIABILI!
+    default_sw = action_sw;					//memorizzo UNA SOLA VOLTA il valore che assume il pulsante quando non è premuto
+	old_sw = action_sw;						//salva il primo valore assunto dal pulsante per uso futuro
 	
+	//Inizialize all measure variables to UNAVAILABLE
+	measure.dust=NA;
+	measure.temp=NA;
+	measure.humid=NA;
+
     //initialize the variable holding the handle
     //for the last transmission
     lastTransmission = 0;
 
 }//end UserInit
+
 
 
 /********************************************************************
@@ -401,59 +431,127 @@ void UserInit(void)
  *******************************************************************/
 void ProcessIO(void)
 {   
-    // User Application USB tasks
+    // User Application USB tasks, check if ready, otherwise return
     if((USBDeviceState < CONFIGURED_STATE)||(USBSuspendControl==1)) return;
-   	Keyboard();        
-    //Call the function that behaves like a keyboard   
+   	
+	//Funzione per collezionare le singole misure dai singoli sensori
+	GetMeasure();        
+
+	//Funzione di Trasmissione delle misure nel formato corretto
+	TransmitMeasure();
+
 }//end ProcessIO
 
-unsigned char Trans(unsigned char a)
-{
-	if(a == '0') return _0;
-	else if(a == ' ') return _space;
-	else if(a == '\n') return _return;
-	else if(a >= '1'&& a <= '9') return (a-'1' + _1);
-	else if((a >= 'a' && a<= 'f') || (a >= 'A' && a<= 'F')) return(a- 'a' + _a);
-}	
 
-void Keyboard(void)
+/******************************************************************************
+ * Function:        void LedMyStatus (void)
+ *
+ * PreCondition:    None
+ *
+ * Input:           None
+ *
+ * Output:          None
+ *
+ * Side Effects:    None
+ *
+ * Overview:        Indicates the present status of the device.  
+ *					Led blinks at certain speed depending on device status.
+ * Note:            
+ *
+ *****************************************************************************/
+void LedMyState(void)
 {
-	static unsigned char hello[] = {_h,_e,_l,_l,_o,_space,_w,_o,_r,_l,_d,_return,0};
-	static BOOL send = FALSE, release = FALSE;
-	static unsigned char index = 0,j;
-	
-	/*
-	if(action_sw == 0 && send == FALSE) //(SwitchIsPressed()) 
+		long int oldbt;
+		oldbt=blink_time;
+
+		// User Application USB tasks, check if ready, otherwise return
+    	if((USBDeviceState < CONFIGURED_STATE)||(USBSuspendControl==1)) return;
+
+		if(measure.dust==NA && measure.temp==NA && measure.humid==NA)	//tutte e 3 assenti, si verifica per un malfunzionamento di dust
+		{
+			blink_time-=NA_ALL;
+		}
+		else if(measure.dust==NA && measure.temp!=NA && measure.humid!=NA)	//Dust assente ma temp e humid presente: caso assurdo, ma va comunque gestito nell'if
+		{
+			blink_time-=NA_DUST;
+		}
+		else if(measure.dust!=NA && (measure.temp==NA || measure.humid==NA))	//solo temp o humid assenti, stato standard in idle
+		{
+			blink_time-=NA_TEMP_OR_HUMID;
+		}
+		else	//la misura di temp e humid è stata appena catturata (assieme alla solita dust)
+		{
+			blink_time-=OK_ALL;
+		}
+		
+
+		if(oldbt==blink_time)
+		{
+			mLED_1_On();
+			blink_time=STAY_STILL_TIME;
+		}
+		else
+		{
+			if(blink_time<0)
+			{
+				mLED_1_Toggle();
+				blink_time=BLINK_TIMEOUT;
+			}
+		}
+
+		return;
+
+}//end
+
+
+
+
+
+/******************************************************************************
+ * Function:        void GetMeasure(void)
+ *
+ * PreCondition:    None
+ *
+ * Input:           None
+ *
+ * Output:          None
+ *
+ * Side Effects:    None
+ *
+ * Overview:        Starts getting measures from Dust and Temp/Humid sensors
+ *					The results are put in the corresponding measure struct fields
+ *
+ * Note:            
+ *
+ *****************************************************************************/
+void GetMeasure(void)
+{
+	//CHIAMARE QUI LE PROCEDURE PER OTTENERE LE MISURE!!!
+	//  measure.dust=GetDust();
+	//	measure.temp=GetTemp();
+	//	measure.humid=GetHumid();
+
+
+	//assegnare a queste variabili le misure ottenute
+	if ( SwitchIsPressed() )
 	{
-		index=0;
-		send = TRUE;
-		mLED_1_Toggle();
-	} else if (action_sw ==1) mLED_1_Off();
-	if(!HIDTxHandleBusy(lastTransmission) && send == TRUE)
-    {	    
-       	//Load the HID buffer
-    	hid_report_in[0] = 1;
-    	hid_report_in[1] = 2;
-    	//if(release == FALSE) {hid_report_in[2] = hello[index++]; release = TRUE; }
-    	//else {hid_report_in[2] = 0; release = FALSE; }
-      	//Send the 8 byte packet over USB to the host.
-      	hid_report_in[2]=3;
-		lastTransmission = HIDTxPacket(HID_EP, (BYTE*)hid_report_in, HID_INT_IN_EP_SIZE);
-      	if(index >= strlen(hello) && release == FALSE)
-      	{
-      		send = FALSE;
-      		index = 0;
-      	}		
-    }
-	*/
+		measure.dust=56;
+		measure.temp=45;
+		measure.humid=765;
+	}
+	else
+	{
+		measure.dust=53;
+		measure.temp=NA;
+		measure.humid=NA;
+	}
 
-	measure.dust=10;
-	measure.temp=20;
-	measure.humid=30;
-	TransmitMeasure();
+
 
     return;		
 }//end keyboard()
+
+
 
 
 /******************************************************************************
@@ -473,17 +571,13 @@ void Keyboard(void)
  * Note:            
  *
  *****************************************************************************/
-
 void TransmitMeasure(void)
 {
-
-
 	if(!HIDTxHandleBusy(lastTransmission))
     {	
-		mLED_1_Toggle();
 		memcpy( (void*)hid_report_in, (void*) &measure, HID_INT_IN_EP_SIZE);
        	/*
-		//Load the HID buffer
+		//DEBUG: Load the HID buffer byte by byte
     	hid_report_in[0] = 0;
     	hid_report_in[1] = 1;
       	hid_report_in[2]=0;
@@ -492,7 +586,6 @@ void TransmitMeasure(void)
 		hid_report_in[5]=3;
 		*/
 		lastTransmission = HIDTxPacket(HID_EP, (BYTE*)hid_report_in, HID_INT_IN_EP_SIZE);
-		mLED_1_Toggle();		
 	}
 
 	return;
@@ -517,29 +610,26 @@ void TransmitMeasure(void)
 BOOL SwitchIsPressed(void)
 {
 
-	BOOL pressed;
+	BOOL really_pressed=FALSE;
 
-    if(action_sw != old_sw)				// When there is a change in button status
+    if(action_sw != old_sw)					// When there is a change in button status
     {
-        old_sw = action_sw;             	// Save new value
-		pressed_count=0;					// Reset pressed counter
-        if(action_sw == 0 && really_pressed==1)	// Only if the button has been RELEASED and the transient has dumped
-			pressed=TRUE;                			// Then Was pressed
-		really_pressed=0;					// Reset really_pressed status
+        old_sw = action_sw;             		// Save new value
+		pressed_time=0;							// Reset pressed counter
+		really_pressed=FALSE;					// Reset really_pressed status
     }//end if
-	else								// Else button is still pushed or still not pushed
+	else									// Else button is still pushed or still not pushed
 	{
-		if(action_sw == 1)					// Only if the button is being pushed
+		if(action_sw != default_sw)				// Only if the button is pushed
 		{
-			if(pressed_count<TEMPO_SMORZAMENTO)	//Start counting cycles of being pushed (configure TEMPO_SMORZAMENTO)
-				pressed_count++;
-			else								//When count is enough, then button is really pressed!
-				really_pressed=1;
+			if(pressed_time<TEMPO_SMORZAMENTO)		//Start counting cycles of being pushed (configure TEMPO_SMORZAMENTO)
+				pressed_time++;
+			else									//When count is enough, then button is really pressed!
+				really_pressed=TRUE;
 		}
-		pressed=FALSE;                   	// But the button must be then released to be sensed by the program!!
 	}							
 
-	return pressed;
+	return really_pressed;
 	
 }//end Switch2IsPressed
 

@@ -134,7 +134,10 @@
 #define HID_RPT01_SIZE          16		// Size of the report descriptor
 #define HID_RPT02_SIZE          24
 
+
 /** DEFINITIONS ****************************************************/
+
+#define NA 0x8000						//"MEASURE NOT AVAILABLE" value -> most relevant bit is HIGH
 
 typedef struct _MEASURE_STRUCT			//Our PROJECT SPECIFIC structure type. Just use this in the program.
 										//It will then be mapped properly to hid_report_in[] automatically!!
@@ -143,10 +146,11 @@ typedef struct _MEASURE_STRUCT			//Our PROJECT SPECIFIC structure type. Just use
 	WORD temp;			//offset 2
 	WORD humid;			//offset 4
 
-    //USB_HID_DSC_HEADER hid_dsc_header[HID_NUM_OF_DSC];
-    /* HID_NUM_OF_DSC is defined in usbcfg.h */
-    
-} measure_struct;
+} measure_struct;						//Attenzione: 	measure_struct è il nome del tipo definito con typedef
+										//				la variabile measure effettiva è dichiarata nel file .c
 
+
+//USB_HID_DSC_HEADER hid_dsc_header[HID_NUM_OF_DSC];
+    /* HID_NUM_OF_DSC is defined in usbcfg.h */
 
 #endif //USBCFG_H

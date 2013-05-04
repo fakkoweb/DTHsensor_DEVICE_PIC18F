@@ -118,11 +118,19 @@
 	#define mLED_1_On()         mLED_1 = 1
 	#define mLED_1_Off()        mLED_1 = 0
 	#define mLED_1_Toggle()     mLED_1 = !mLED_1
+	//Led timings
+	#define BLINK_TIMEOUT		80000
+	#define STAY_STILL_TIME		250000
+	//Led Error Codes (1-9 are speed blinking multipliers, 0 means stay still for STAY_STILL_TIME)
+	#define NA_ALL				7
+	#define NA_DUST				7		//Caso improbabile: non capiterà mai che dust è NA mentre temp e humid ci sono (siccome arrivano solo ogni 30 secondi)
+	#define NA_TEMP_OR_HUMID	1
+	#define OK_ALL				0
 	
 	/** S W I T C H *****************************************************/
 	#define mInitSwitch()     	TRISCbits.TRISC5 = INPUT_PIN
 	#define action_sw      		PORTCbits.RC5
-	#define TEMPO_SMORZAMENTO	10
+	#define TEMPO_SMORZAMENTO	20
 		
     /** I/O pin definitions ********************************************/
     #define INPUT_PIN 1
