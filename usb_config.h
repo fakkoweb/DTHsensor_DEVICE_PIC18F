@@ -145,7 +145,8 @@ typedef struct _MEASURE_STRUCT			//Our PROJECT SPECIFIC structure type. Just use
     WORD dust;			//offset 0 
 	WORD temp;			//offset 2
 	WORD humid;			//offset 4
-
+	//provo a fare un 
+	//significativo cambiamento
 } measure_struct;						//Attenzione: 	measure_struct è il nome del tipo definito con typedef
 										//				la variabile measure effettiva è dichiarata nel file .c
 
