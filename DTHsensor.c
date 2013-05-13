@@ -53,7 +53,7 @@
 */
 #include "./USB/usb.h"
 #include "./USB/usb_function_hid.h"
-#include "keyboard.h"				//include for ASCII codes layout (can be useful)
+//#include "keyboard.h"				//include for ASCII codes layout (can be useful)
 #include "HardwareProfile.h"
 
 /** CONFIGURATION **************************************************/
