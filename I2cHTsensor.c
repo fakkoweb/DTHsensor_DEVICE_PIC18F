@@ -1,6 +1,10 @@
 #include "i2c.h"
-
-
+#include <delays.h>
+#include <timers.h>
+#include <stdio.h>
+#include <sw_i2c.h>
+#define DAC_ADDR 0x27
+#define I2C_IO_V4 //setta I2C sui pin trisb6 trisb4
 
 //videolezione a 53:00 circa
 //1:08:00 circa per le funzioni
@@ -11,18 +15,31 @@
 
 //(sspadd+1)*400=12000 -> SSPADD+1=30 ->SSPADD=29
 
- //CloseI2C
- //IdleI2C serve in multimaster
- //startI2C genera la condizione di start
- //Restart genera la condizione di restart
- //StopI2c
- //ackI2c
- //notackI2C
- //DataRdyI2C dopo 8 colpi di clock passa info
- //readI2C
- //writeI2c
+main(){
+	char temperatureH;
+	char temperatureL;
+	char humidityH;
+	char humidityL;
 
-
-//start -> scrivere indirzzo spostato di un bit -> vedere se ha risposto ack -> stoppare e cercare se ha mandato i dati
-
-
+	int address = DAC_ADDR<<1;
+	OpenI2C( MASTER, SLEW_ON );
+	address += 1;
+	StartI2C();
+	WriteI2C(address);
+	IdleI2C();
+	while(!DataRdyI2C());
+	humidityH = ReadI2C();
+	//fare il controllo sui byte di stato;
+	AckI2C();
+	while(!DataRdyI2C());
+	humidityL = ReadI2C();
+	AckI2C();
+	while(!DataRdyI2C());
+	temperatureH = ReadI2C();
+	AckI2C();
+	while(!DataRdyI2C());
+	temperatureL = ReadI2C();
+	AckI2C();
+	NotAckI2C();
+	StopI2C();
+}
