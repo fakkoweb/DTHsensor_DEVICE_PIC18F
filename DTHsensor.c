@@ -325,7 +325,7 @@ void main(void)
 static void InitializeSystem(void)
 {
 	ADCON1 |= 0x0F;                 // Default all pins to digital
-    
+    SSPADD = 0x1D;					//set slew-rate 400kHz @ 48MHz
 //	The USB specifications require that USB peripheral devices must never source
 //	current onto the Vbus pin.  Additionally, USB peripherals should not source
 //	current on D+ or D- when the host/hub is not actively powering the Vbus line.
@@ -389,6 +389,7 @@ static void InitializeSystem(void)
  *****************************************************************************/
 void UserInit(void)
 {
+	int address = DAC_ADDR<<1;
     //Initialize all of the LED pins
     mInitLed_1();
     mLED_1_Off();
@@ -408,6 +409,9 @@ void UserInit(void)
     //for the last transmission
     lastTransmission = 0;
 
+	
+	OpenI2C( MASTER, SLEW_ON );
+	address += 1;
 }//end UserInit
 
 
