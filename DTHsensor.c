@@ -55,6 +55,8 @@
 #include "./USB/usb_function_hid.h"
 //#include "keyboard.h"				//include for ASCII codes layout (can be useful)
 #include "HardwareProfile.h"
+#include "i2c.h"
+#include "i2cHTsensor.h"
 
 /** CONFIGURATION **************************************************/
 #if defined(LOW_PIN_COUNT_USB_DEVELOPMENT_KIT)
@@ -126,6 +128,7 @@ BOOL Keyboard_out;
 		void GetMeasure(void);
 
 			WORD GetDust(void);
+			int ReadSensor(WORD * HUM, WORD * TEMP);
 			//WORD GetTemp(void)
 			//WORD GetHumid(void)
 		void TransmitMeasure(void);
@@ -391,7 +394,6 @@ static void InitializeSystem(void)
  *****************************************************************************/
 void UserInit(void)
 {
-	int address = DAC_ADDR<<1;
     //Initialize all of the LED pins
     mInitLed_1();
     mLED_1_Off();
@@ -414,9 +416,9 @@ void UserInit(void)
     //for the last transmission
     lastTransmission = 0;
 
-	
 	OpenI2C( MASTER, SLEW_ON );
-	address += 1;
+	mLED_1_Off();
+
 }//end UserInit
 
 
@@ -472,7 +474,7 @@ void LedMyState(void)
 {
 		long int oldbt;
 		oldbt=blink_time;
-
+/*
 		// User Application USB tasks, check if ready, otherwise return
     	if((USBDeviceState < CONFIGURED_STATE)||(USBSuspendControl==1)) return;
 
@@ -507,7 +509,7 @@ void LedMyState(void)
 				blink_time=BLINK_TIMEOUT;
 			}
 		}
-
+*/
 		return;
 
 }//end
@@ -535,14 +537,9 @@ void LedMyState(void)
  *****************************************************************************/
 void GetMeasure(void)
 {
-	//CHIAMARE QUI LE PROCEDURE PER OTTENERE LE MISURE!!!
-	 measure.dust=GetDust();
-	//	measure.temp=GetTemp();
-	//	measure.humid=GetHumid();
-
-
+int result;
 	//assegnare a queste variabili le misure ottenute
-	if ( SwitchIsPressed() )
+	if ( !SwitchIsPressed() )
 	{
 		measure.dust=56;
 		measure.temp=45;
@@ -550,9 +547,15 @@ void GetMeasure(void)
 	}
 	else
 	{
-		measure.dust=53;
+	 	measure.dust=GetDust();
+		//	measure.temp=GetTemp();
+		//	measure.humid=GetHumid();
+		result=ReadSensor(&measure.humid,&measure.temp);
+		mLED_1_Off();
+		if(result<0){
 		measure.temp=NA;
 		measure.humid=NA;
+		}
 	}
 
 

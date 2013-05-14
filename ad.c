@@ -29,8 +29,8 @@ WORD GetDust(void)
     //PORTCbits.RC4 = 1;            // RC4 up at start of conversion - Debug and timing
     while (ADCON0bits.GO);          // Wait conversion done
     //PORTCbits.RC4 = 0;            // RC4 down at end of conversion - Debug and timing
-	a[0]=ADRESH;
-	a[1]=ADRESL;
+	a[1]=ADRESH;
+	a[0]=ADRESL;
 	memcpy( (void*)&dust, (void*) &a, 2);
     //dust = ( (WORD)ADRESH << 8) + ADRESL; // Read ADC registers and convert to 0-1023 integer             
     //PORTC = (voltage >> 6) & 0x0F;  Dispaly 4 MSB

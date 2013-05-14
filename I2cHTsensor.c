@@ -1,45 +1,64 @@
 #include "i2c.h"
-#include <delays.h>
-#include <timers.h>
-#include <stdio.h>
-#include <sw_i2c.h>
-#define DAC_ADDR 0x27
-#define I2C_IO_V4 //setta I2C sui pin trisb6 trisb4
+#include "i2cHTsensor.h"
+#include "./USB/usb.h"
+#include "./USB/usb_function_hid.h"
+//#include "keyboard.h"				//include for ASCII codes layout (can be useful)
+#include "HardwareProfile.h"
 
 //videolezione a 53:00 circa
 //1:08:00 circa per le funzioni
  //OpenI2C(MASTER,SLEW_ON)
 
-//settare SSPADD secondo la formula
-//400khz = Fosc/((SSPADD+1)*4)
-
-//(sspadd+1)*400=12000 -> SSPADD+1=30 ->SSPADD=29
-
-main(){
+int ReadSensor(WORD * HUM, WORD * TEMP){
+	WORD T,H;
 	char temperatureH;
 	char temperatureL;
 	char humidityH;
 	char humidityL;
+	int ERRflag=0;
+	char result;
+	char address = DAC_ADDR<<1;
 
-	int address = DAC_ADDR<<1;
-	OpenI2C( MASTER, SLEW_ON );
-	address += 1;
+	address += 1; //Imposta l'indirizzo del sensore in lettura
+	mLED_1_On();
 	StartI2C();
-	WriteI2C(address);
-	IdleI2C();
-	while(!DataRdyI2C());
-	humidityH = ReadI2C();
-	//fare il controllo sui byte di stato;
-	AckI2C();
+	result = WriteI2C(address);
+	//mLED_1_Off();
+	if(result<0) return -1;
+	while(!DataRdyI2C());//finché non ci sono dati aspetta
+	humidityH = ReadI2C();//legge i byte alti dell'umidità su cui ci sono 2 bit di stato
+	//mLED_1_Off();
+	if((humidityH&0b11000000)!=0b0000000) ERRflag=1; //se i bit non danno misura corretta ricorda errore;
+	humidityH &=0b00111111; //elimina i byte di stato
+	mLED_1_Off();
+	AckI2C(); //invia corretta ricezione
 	while(!DataRdyI2C());
 	humidityL = ReadI2C();
-	AckI2C();
+	mLED_1_Off();
+	AckI2C();//stesso per i byte bassi
 	while(!DataRdyI2C());
 	temperatureH = ReadI2C();
+	mLED_1_Off();
 	AckI2C();
 	while(!DataRdyI2C());
 	temperatureL = ReadI2C();
+	mLED_1_Off();
+	temperatureL &= 0b11111100;//protocollo simile per la temperatura ma con diversa maschera per la temperatura (vedi datasheet
 	AckI2C();
 	NotAckI2C();
-	StopI2C();
+	StopI2C();//chiude la prima trasmissione
+	if(ERRflag==1) return -1;
+	//elaborazione dei dati in 2 word;
+	T=0;
+	H=0;
+	T = T + (WORD)temperatureH;
+	T = T<<8;
+	T = T + (WORD)temperatureL;
+	T= T>>2;
+	H = H + (WORD)humidityH;
+	H = H<<8;
+	H = H + (WORD)humidityL;
+	*TEMP=T;
+	*HUM=H;
+	return 1;
 }
