@@ -110,6 +110,7 @@ long int blink_time;
 
 //measure support variables
 measure_struct measure;			//Vedi la dichiarazione del tipo in usb_config.h
+int MFLAG;
 
 //USB support variables
 USB_HANDLE lastTransmission;
@@ -279,23 +280,6 @@ void main(void)
 
     while(1)
     {
-        #if defined(USB_POLLING)
-		// Check bus status and service USB interrupts.
-        USBDeviceTasks(); // Interrupt or polling method.  If using polling, must call
-        				  // this function periodically.  This function will take care
-        				  // of processing and responding to SETUP transactions 
-        				  // (such as during the enumeration process when you first
-        				  // plug in).  USB hosts require that USB devices should accept
-        				  // and process SETUP packets in a timely fashion.  Therefore,
-        				  // when using polling, this function should be called 
-        				  // frequently (such as once about every 100 microseconds) at any
-        				  // time that a SETUP packet might reasonably be expected to
-        				  // be sent by the host to your device.  In most cases, the
-        				  // USBDeviceTasks() function does not take very long to
-        				  // execute (~50 instruction cycles) before it returns.
-        #endif
-    				  
-
 		// Application-specific tasks.
 		// Application related code may be added here, or in the ProcessIO() function.
         ProcessIO();
@@ -421,7 +405,7 @@ void UserInit(void)
 	TRISB=0x00;
 	OpenI2C( MASTER, SLEW_ON );
 	mLED_1_Off();
-
+	MFLAG=0;
 }//end UserInit
 
 
@@ -447,12 +431,14 @@ void ProcessIO(void)
 {   
     // User Application USB tasks, check if ready, otherwise return
     if((USBDeviceState < CONFIGURED_STATE)||(USBSuspendControl==1)) return;
-   	
 	//Funzione per collezionare le singole misure dai singoli sensori
 	GetMeasure();        
 
 	//Funzione di Trasmissione delle misure nel formato corretto
+	if(MFLAG){
 	TransmitMeasure();
+	MFLAG=0;
+	}
 
 }//end ProcessIO
 
@@ -543,19 +529,12 @@ void GetMeasure(void)
 unsigned char address = DAC_ADDR<<1;
 int result;
 	//assegnare a queste variabili le misure ottenute
-	if ( !SwitchIsPressed() )
-	{
-		measure.dust=SSPCON1;
-		measure.temp=SSPCON2;
-		measure.humid=SSPSTAT;
-//#define I2C_SCL	TRISBbits.TRISB6
-//#define I2C_SDA	TRISBbits.TRISB4
-	}
-	else
-	{
-	result=RequestMeasureTH();
-	ReadSensor(&measure.temp,& measure.humid);
-	measure.dust=SSPCON2;
+	if(!MFLAG){
+	RequestMeasureTH();
+	result=ReadSensor(&measure.temp,& measure.humid);
+	if(result>0) MFLAG=1;
+	else MFLAG=0;
+	measure.dust=result+3;
 	}
     return;		
 }//end keyboard()
