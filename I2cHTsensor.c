@@ -9,45 +9,54 @@
 //1:08:00 circa per le funzioni
  //OpenI2C(MASTER,SLEW_ON)
 
+int RequestMeasureTH(){
+	unsigned char address = DAC_ADDR<<1;
+	int result;
+	StartI2C();
+	result=WriteI2C(address);
+	StopI2C();
+
+	if(result==-1){
+	return 0;
+ 	}//busy;
+	if(result==-2){
+	mLED_1_Off();
+	mLED_1_On();
+	 //notAck;
+	return 1;
+	}
+	//if(resutl==0) //ok;
+	return 1;
+}
+
+
 int ReadSensor(WORD * HUM, WORD * TEMP){
 	WORD T,H;
-	char temperatureH;
-	char temperatureL;
-	char humidityH;
-	char humidityL;
-	int ERRflag=0;
-	char result;
-	char address = DAC_ADDR<<1;
+	unsigned char temperatureH;
+	unsigned char temperatureL;
+	unsigned char humidityH;
+	unsigned char humidityL;
+	unsigned char maschera;
+	unsigned int STALEflag=0;
+	unsigned char result;
+	unsigned char address = DAC_ADDR<<1;
 
-	address += 1; //Imposta l'indirizzo del sensore in lettura
-	mLED_1_On();
+	address |= 0b00000001; //Imposta l'indirizzo del sensore in lettura
 	StartI2C();
 	result = WriteI2C(address);
-	//mLED_1_Off();
-	if(result<0) return -1;
-	while(!DataRdyI2C());//finché non ci sono dati aspetta
 	humidityH = ReadI2C();//legge i byte alti dell'umidità su cui ci sono 2 bit di stato
-	//mLED_1_Off();
-	if((humidityH&0b11000000)!=0b0000000) ERRflag=1; //se i bit non danno misura corretta ricorda errore;
+	if(humidityH & 0b11000000) STALEflag=1; //se i bit non danno misura corretta ricorda errore;
 	humidityH &=0b00111111; //elimina i byte di stato
-	mLED_1_Off();
 	AckI2C(); //invia corretta ricezione
-	while(!DataRdyI2C());
 	humidityL = ReadI2C();
-	mLED_1_Off();
 	AckI2C();//stesso per i byte bassi
-	while(!DataRdyI2C());
 	temperatureH = ReadI2C();
-	mLED_1_Off();
 	AckI2C();
-	while(!DataRdyI2C());
 	temperatureL = ReadI2C();
-	mLED_1_Off();
 	temperatureL &= 0b11111100;//protocollo simile per la temperatura ma con diversa maschera per la temperatura (vedi datasheet
-	AckI2C();
 	NotAckI2C();
 	StopI2C();//chiude la prima trasmissione
-	if(ERRflag==1) return -1;
+	if(STALEflag==1) return -1;
 	//elaborazione dei dati in 2 word;
 	T=0;
 	H=0;

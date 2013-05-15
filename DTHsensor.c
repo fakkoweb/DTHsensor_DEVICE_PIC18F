@@ -126,7 +126,7 @@ BOOL Keyboard_out;
 	//usbdevicetasks()
 	void ProcessIO(void);
 		void GetMeasure(void);
-
+			int RequestMeasureTH(void);
 			WORD GetDust(void);
 			int ReadSensor(WORD * HUM, WORD * TEMP);
 			//WORD GetTemp(void)
@@ -416,6 +416,9 @@ void UserInit(void)
     //for the last transmission
     lastTransmission = 0;
 
+	SSPCON1=0x00;
+	SSPSTAT=0x00;
+	TRISB=0x00;
 	OpenI2C( MASTER, SLEW_ON );
 	mLED_1_Off();
 
@@ -537,29 +540,23 @@ void LedMyState(void)
  *****************************************************************************/
 void GetMeasure(void)
 {
+unsigned char address = DAC_ADDR<<1;
 int result;
 	//assegnare a queste variabili le misure ottenute
 	if ( !SwitchIsPressed() )
 	{
-		measure.dust=56;
-		measure.temp=45;
-		measure.humid=765;
+		measure.dust=SSPCON1;
+		measure.temp=SSPCON2;
+		measure.humid=SSPSTAT;
+//#define I2C_SCL	TRISBbits.TRISB6
+//#define I2C_SDA	TRISBbits.TRISB4
 	}
 	else
 	{
-	 	measure.dust=GetDust();
-		//	measure.temp=GetTemp();
-		//	measure.humid=GetHumid();
-		result=ReadSensor(&measure.humid,&measure.temp);
-		mLED_1_Off();
-		if(result<0){
-		measure.temp=NA;
-		measure.humid=NA;
-		}
+	result=RequestMeasureTH();
+	ReadSensor(&measure.temp,& measure.humid);
+	measure.dust=SSPCON2;
 	}
-
-
-
     return;		
 }//end keyboard()
 
