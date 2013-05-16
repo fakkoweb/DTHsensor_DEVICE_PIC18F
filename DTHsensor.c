@@ -55,6 +55,8 @@
 #include "./USB/usb_function_hid.h"
 //#include "keyboard.h"				//include for ASCII codes layout (can be useful)
 #include "HardwareProfile.h"
+#include "i2c.h"
+#include "i2cHTsensor.h"
 
 /** CONFIGURATION **************************************************/
 #if defined(LOW_PIN_COUNT_USB_DEVELOPMENT_KIT)
@@ -108,6 +110,7 @@ long int blink_time;
 
 //measure support variables
 measure_struct measure;			//Vedi la dichiarazione del tipo in usb_config.h
+int MFLAG;
 
 //USB support variables
 USB_HANDLE lastTransmission;
@@ -123,7 +126,13 @@ BOOL Keyboard_out;
 	//usbdevicetasks()
 	void ProcessIO(void);
 		void GetMeasure(void);
+<<<<<<< HEAD
 			short int GetDust(void);
+=======
+			int RequestMeasureTH(void);
+			WORD GetDust(void);
+			int ReadSensor(WORD * HUM, WORD * TEMP);
+>>>>>>> origin/Gprimeoperazioni
 			//WORD GetTemp(void)
 			//WORD GetHumid(void)
 		void TransmitMeasure(void);
@@ -274,23 +283,6 @@ void main(void)
 
     while(1)
     {
-        #if defined(USB_POLLING)
-		// Check bus status and service USB interrupts.
-        USBDeviceTasks(); // Interrupt or polling method.  If using polling, must call
-        				  // this function periodically.  This function will take care
-        				  // of processing and responding to SETUP transactions 
-        				  // (such as during the enumeration process when you first
-        				  // plug in).  USB hosts require that USB devices should accept
-        				  // and process SETUP packets in a timely fashion.  Therefore,
-        				  // when using polling, this function should be called 
-        				  // frequently (such as once about every 100 microseconds) at any
-        				  // time that a SETUP packet might reasonably be expected to
-        				  // be sent by the host to your device.  In most cases, the
-        				  // USBDeviceTasks() function does not take very long to
-        				  // execute (~50 instruction cycles) before it returns.
-        #endif
-    				  
-
 		// Application-specific tasks.
 		// Application related code may be added here, or in the ProcessIO() function.
         ProcessIO();
@@ -325,7 +317,7 @@ void main(void)
 static void InitializeSystem(void)
 {
 	ADCON1 |= 0x0F;                 // Default all pins to digital
-    
+    SSPADD = 0x1D;					//set slew-rate 400kHz @ 48MHz
 //	The USB specifications require that USB peripheral devices must never source
 //	current onto the Vbus pin.  Additionally, USB peripherals should not source
 //	current on D+ or D- when the host/hub is not actively powering the Vbus line.
@@ -408,6 +400,12 @@ void UserInit(void)
     //for the last transmission
     lastTransmission = 0;
 
+	SSPCON1=0x00;
+	SSPSTAT=0x00;
+	TRISB=0x00;
+	OpenI2C( MASTER, SLEW_ON );
+	mLED_1_Off();
+	MFLAG=0;
 }//end UserInit
 
 
@@ -433,12 +431,14 @@ void ProcessIO(void)
 {   
     // User Application USB tasks, check if ready, otherwise return
     if((USBDeviceState < CONFIGURED_STATE)||(USBSuspendControl==1)) return;
-   	
 	//Funzione per collezionare le singole misure dai singoli sensori
 	GetMeasure();        
 
 	//Funzione di Trasmissione delle misure nel formato corretto
+	if(MFLAG){
 	TransmitMeasure();
+	MFLAG=0;
+	}
 
 }//end ProcessIO
 
@@ -463,7 +463,7 @@ void LedMyState(void)
 {
 		long int oldbt;
 		oldbt=blink_time;
-
+/*
 		// User Application USB tasks, check if ready, otherwise return
     	if((USBDeviceState < CONFIGURED_STATE)||(USBSuspendControl==1)) return;
 
@@ -498,7 +498,7 @@ void LedMyState(void)
 				blink_time=BLINK_TIMEOUT;
 			}
 		}
-
+*/
 		return;
 
 }//end
@@ -526,6 +526,7 @@ void LedMyState(void)
  *****************************************************************************/
 void GetMeasure(void)
 {
+<<<<<<< HEAD
 	//CHIAMARE QUI LE PROCEDURE PER OTTENERE LE MISURE!!!
 
 	//	measure.temp=GetTemp();
@@ -544,10 +545,18 @@ void GetMeasure(void)
 		measure.dust=GetDust();
 		measure.temp=NA;
 		measure.humid=NA;
+=======
+unsigned char address = DAC_ADDR<<1;
+int result;
+	//assegnare a queste variabili le misure ottenute
+	if(!MFLAG){
+	RequestMeasureTH();
+	result=ReadSensor(&measure.temp,& measure.humid);
+	if(result>0) MFLAG=1;
+	else MFLAG=0;
+	measure.dust=result+3;
+>>>>>>> origin/Gprimeoperazioni
 	}
-
-
-
     return;		
 }//end keyboard()
 
