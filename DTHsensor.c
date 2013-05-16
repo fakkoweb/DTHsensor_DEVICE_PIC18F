@@ -119,13 +119,11 @@ BOOL Keyboard_out;
 //void main(void)
 	static void InitializeSystem(void);
 		void UserInit(void);
-			void ADCInit(void);
 		//usbdeviceinit()
 	//usbdevicetasks()
 	void ProcessIO(void);
 		void GetMeasure(void);
-
-			WORD GetDust(void);
+			short int GetDust(void);
 			//WORD GetTemp(void)
 			//WORD GetHumid(void)
 		void TransmitMeasure(void);
@@ -401,9 +399,6 @@ void UserInit(void)
     default_sw = action_sw;					//memorizzo UNA SOLA VOLTA il valore che assume il pulsante quando non è premuto
 	old_sw = action_sw;						//salva il primo valore assunto dal pulsante per uso futuro
 
-	//inizializza i registri necessari alla conversione ADC dust
-	ADCInit();
-
 	//Inizialize all measure variables to UNAVAILABLE
 	measure.dust=NA;
 	measure.temp=NA;
@@ -532,7 +527,7 @@ void LedMyState(void)
 void GetMeasure(void)
 {
 	//CHIAMARE QUI LE PROCEDURE PER OTTENERE LE MISURE!!!
-	 measure.dust=GetDust();
+
 	//	measure.temp=GetTemp();
 	//	measure.humid=GetHumid();
 
@@ -546,7 +541,7 @@ void GetMeasure(void)
 	}
 	else
 	{
-		measure.dust=53;
+		measure.dust=GetDust();
 		measure.temp=NA;
 		measure.humid=NA;
 	}

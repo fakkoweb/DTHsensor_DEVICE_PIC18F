@@ -142,7 +142,7 @@
 typedef struct _MEASURE_STRUCT			//Our PROJECT SPECIFIC structure type. Just use this in the program.
 										//It will then be mapped properly to hid_report_in[] automatically!!
 {
-    WORD dust;			//offset 0 
+    short int dust;			//offset 0 
 	WORD temp;			//offset 2
 	WORD humid;			//offset 4
 
