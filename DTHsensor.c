@@ -279,7 +279,24 @@ void main(void)
     #endif
 
     while(1)
-    {
+    {       
+	#if defined(USB_POLLING)
+	// Check bus status and service USB interrupts.
+        USBDeviceTasks(); // Interrupt or polling method. If using polling, must call
+         // this function periodically. This function will take care
+         // of processing and responding to SETUP transactions
+         // (such as during the enumeration process when you first
+         // plug in). USB hosts require that USB devices should accept
+         // and process SETUP packets in a timely fashion. Therefore,
+         // when using polling, this function should be called
+         // frequently (such as once about every 100 microseconds) at any
+         // time that a SETUP packet might reasonably be expected to
+         // be sent by the host to your device. In most cases, the
+         // USBDeviceTasks() function does not take very long to
+         // execute (~50 instruction cycles) before it returns.
+        #endif
+
+
 		// Application-specific tasks.
 		// Application related code may be added here, or in the ProcessIO() function.
         ProcessIO();
