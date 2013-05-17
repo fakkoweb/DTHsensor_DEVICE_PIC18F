@@ -126,13 +126,9 @@ BOOL Keyboard_out;
 	//usbdevicetasks()
 	void ProcessIO(void);
 		void GetMeasure(void);
-<<<<<<< HEAD
-			short int GetDust(void);
-=======
 			int RequestMeasureTH(void);
 			WORD GetDust(void);
 			int ReadSensor(WORD * HUM, WORD * TEMP);
->>>>>>> origin/Gprimeoperazioni
 			//WORD GetTemp(void)
 			//WORD GetHumid(void)
 		void TransmitMeasure(void);
@@ -526,37 +522,17 @@ void LedMyState(void)
  *****************************************************************************/
 void GetMeasure(void)
 {
-<<<<<<< HEAD
-	//CHIAMARE QUI LE PROCEDURE PER OTTENERE LE MISURE!!!
-
-	//	measure.temp=GetTemp();
-	//	measure.humid=GetHumid();
-
-
-	//assegnare a queste variabili le misure ottenute
-	if ( SwitchIsPressed() )
-	{
-		measure.dust=56;
-		measure.temp=45;
-		measure.humid=765;
-	}
-	else
-	{
-		measure.dust=GetDust();
-		measure.temp=NA;
-		measure.humid=NA;
-=======
 unsigned char address = DAC_ADDR<<1;
 int result;
 	//assegnare a queste variabili le misure ottenute
 	if(!MFLAG){
-	RequestMeasureTH();
-	result=ReadSensor(&measure.temp,& measure.humid);
-	if(result>0) MFLAG=1;
-	else MFLAG=0;
-	measure.dust=result+3;
->>>>>>> origin/Gprimeoperazioni
+		RequestMeasureTH();
+		measure.dust=GetDust();
+		result=ReadSensor(&measure.temp,& measure.humid);
+		if(result>0) MFLAG=1;
+		else MFLAG=0;
 	}
+	if(result<0)measure.humid|=0b1000000000000000;
     return;		
 }//end keyboard()
 
