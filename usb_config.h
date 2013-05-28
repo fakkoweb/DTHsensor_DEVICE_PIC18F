@@ -142,9 +142,9 @@
 typedef struct _MEASURE_STRUCT			//Our PROJECT SPECIFIC structure type. Just use this in the program.
 										//It will then be mapped properly to hid_report_in[] automatically!!
 {
-    unsigned short int dust;			//offset 0 
-	short int temp;						//offset 2
-	unsigned short int humid;			//offset 4
+    WORD dust;			//offset 0 
+	WORD temp;			//offset 2
+	WORD humid;			//offset 4
 
 } measure_struct;						//Attenzione: 	measure_struct è il nome del tipo definito con typedef
 										//				la variabile measure effettiva è dichiarata nel file .c
