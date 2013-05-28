@@ -240,8 +240,8 @@ ROM BYTE configDescriptor1[]={
     USB_DESCRIPTOR_ENDPOINT,    //ENDPOINT descriptor type (=5)
     HID_EP | _EP_IN,            //EndpointAddress (within 1 and 15, NOT 0)
     _INTERRUPT,                   //Attributes (=interrupt in our case)
-    DESC_CONFIG_WORD(8),        //[MODIFICARE!!] MaxPacketSize
-    0x01                          //[MODIFICARE!!] Interval of polling for interrupt or isochronous
+    DESC_CONFIG_WORD(6),        //MaxPacketSize (6 bytes in our case, but can also be bigger, no problems)
+    0x0A                          //Interval of polling for interrupt or isochronous (10us in our case)
 };
 
 //**** STRING DESCRIPTORS ****
