@@ -53,7 +53,6 @@
 */
 #include "./USB/usb.h"
 #include "./USB/usb_function_hid.h"
-#include "keyboard.h"				//include for ASCII codes layout (can be useful)
 #include "HardwareProfile.h"
 
 /** CONFIGURATION **************************************************/
@@ -119,11 +118,12 @@ BOOL Keyboard_out;
 //void main(void)
 	static void InitializeSystem(void);
 		void UserInit(void);
+		void ADCInit(void);
 		//usbdeviceinit()
 	//usbdevicetasks()
 	void ProcessIO(void);
 		void GetMeasure(void);
-			//WORD GetDust(void)
+			short int GetDust(void);
 			//WORD GetTemp(void)
 			//WORD GetHumid(void)
 		void TransmitMeasure(void);
@@ -295,8 +295,6 @@ void main(void)
 		// Application related code may be added here, or in the ProcessIO() function.
         ProcessIO();
 
-		// Blinking Led - Express device state through led blinking in different ways
-		LedMyState();
 
     }//end while
 }//end main
@@ -404,6 +402,9 @@ void UserInit(void)
 	measure.temp=NA;
 	measure.humid=NA;
 
+
+	ADCInit();
+
     //initialize the variable holding the handle
     //for the last transmission
     lastTransmission = 0;
@@ -434,6 +435,9 @@ void ProcessIO(void)
     // User Application USB tasks, check if ready, otherwise return
     if((USBDeviceState < CONFIGURED_STATE)||(USBSuspendControl==1)) return;
    	
+	// Blinking Led - Express device state through led blinking in different ways
+	LedMyState();
+
 	//Funzione per collezionare le singole misure dai singoli sensori
 	GetMeasure();        
 
@@ -541,7 +545,7 @@ void GetMeasure(void)
 	}
 	else
 	{
-		measure.dust=53;
+		measure.dust=GetDust();
 		measure.temp=NA;
 		measure.humid=NA;
 	}
